@@ -5,7 +5,7 @@ import type {Plugin} from 'vite';
 
 const pfexec = promisify(execFile);
 
-export function slangimport(): Plugin {
+export function slangplugin(): Plugin {
   return {
     name: 'vite.slang.plugin',
     enforce: 'pre',
@@ -88,13 +88,16 @@ export function slangimport(): Plugin {
         }
 
         const fileName = filePath.split(/[/\\]/).pop();
-        const exactImportString = query ? `*/${fileName}?${query}` : `*/${fileName}`;
+        const exactImportString =
+            query ? `*/${fileName}?${query}` : `*/${fileName}`;
 
         const dtsPath = `${filePath}.d.ts`;
         let dtsContent = `// auto generated types file for vite-plugin-slang\n`;
         dtsContent += `declare module "${exactImportString}" {\n`;
         mutableentryPoints.forEach(({name}) => {
-          dtsContent += `export const ${name}: { readonly code: string; readonly target: "${target}"; readonly stage: string; };\n`;
+          dtsContent += `export const ${
+              name}: { readonly code: string; readonly target: "${
+              target}"; readonly stage: string;readonly name: "${name}"; };\n`;
         });
         dtsContent += `}\n`;
 
@@ -141,6 +144,7 @@ export function slangimport(): Plugin {
         let exits = ``;
         shaders.forEach(({entry, stage, code}) => {
           exits += `export const ${entry} = {
+    name: "${entry}"
     code: ${JSON.stringify(code.trim())},
     target: "${target}",
     stage: "${stage}"

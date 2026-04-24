@@ -12,14 +12,10 @@
       "types": "./dist/main.d.ts",
       "import": "./dist/main.js",
       "require": "./dist/main.cjs"
-    },
-    "./shader": {
-      "types": "./shader.d.ts"
     }
   },
   "files": [
-    "dist",
-    "shader.d.ts"
+    "dist"
   ],
   "scripts": {
     "build": "tsup src/main.ts --format cjs,esm --clean && tsc",
@@ -37,7 +33,7 @@
   "author": "postred",
   "license": "MIT",
   "peerDependencies": {
-    "vite": "^4.0.0 || ^5.0.0 || ^6.0.0"
+    "vite": "^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
   },
   "packageManager": "pnpm@10.23.0",
   "devDependencies": {
