@@ -1,0 +1,49 @@
+{
+  "name": "vite-plugin-slang",
+  "version": "0.2.0",
+  "type": "module",
+  "description": "for using slang shaders with vite as wgsl or glsl targets",
+  "main": "./dist/main.cjs",
+  "module": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "repository": {"url": "https://github.com/rarepng/viteslang"},
+"exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.js",
+      "require": "./dist/main.cjs"
+    },
+    "./shader": {
+      "types": "./shader.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "shader.d.ts"
+  ],
+  "scripts": {
+    "build": "tsup src/main.ts --format cjs,esm --clean && tsc",
+    "dev": "tsup src/main.ts --format cjs,esm --watch"
+  },
+  "keywords": [
+    "vite",
+    "plugin",
+    "slang",
+    "shader",
+    "webgpu",
+    "webgl",
+    "threejs"
+  ],
+  "author": "postred",
+  "license": "MIT",
+  "peerDependencies": {
+    "vite": "^4.0.0 || ^5.0.0 || ^6.0.0"
+  },
+  "packageManager": "pnpm@10.23.0",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10"
+  }
+}
