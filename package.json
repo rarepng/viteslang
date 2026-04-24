@@ -1,5 +1,5 @@
 {
-  "name": "vite-plugin-slang",
+  "name": "viteslang",
   "version": "0.2.0",
   "type": "module",
   "description": "for using slang shaders with vite as wgsl or glsl targets",
