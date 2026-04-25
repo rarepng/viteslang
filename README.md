@@ -107,3 +107,4 @@ return {
 import { vx } from './shader.slang?entry=vx';
 import { fx } from './shader.slang?entry=fx';
 ```
+* add second exported function for fetching (probably not building) slang (maybe wasm version for complete cross platformability) for users who dont have slang on path or maybe for everyone? (probably will switch wasm to default and slang on path to be optional for people who want latest slang)
