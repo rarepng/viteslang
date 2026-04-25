@@ -1,0 +1,38 @@
+name: npm
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write 
+
+    steps:
+      - name: code
+        uses: actions/checkout@v4
+
+      - name: pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.23.0
+
+      - name: node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: deps
+        run: pnpm install --frozen-lockfile
+
+      - name: build
+        run: pnpm run build
+
+      - name: publish
+        run: pnpm publish --access public --no-git-checks --provenance

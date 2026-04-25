@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: code
+        uses: actions/checkout@v4
+
+      - name: pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.23.0
+
+      - name: node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: deps
+        run: pnpm install --frozen-lockfile
+
+      - name: build
+        run: pnpm run build
