@@ -1,4 +1,4 @@
-# vite-plugin-slang
+# @postred/viteslang
 
 plugin that imports and compiles [Slang](https://github.com/shader-slang/slang) shaders directly to viable wgsl/glsl for vite typescript.
 
@@ -7,11 +7,11 @@ supports lazy loading and destruct importing efficinetly.
 ## install
 
 ```bash
-npm install -D vite-plugin-slang
+npm install -D @postred/viteslang
 # or
-pnpm add -D vite-plugin-slang
+pnpm add -D @postred/viteslang
 # or
-yarn add -D vite-plugin-slang
+yarn add -D @postred/viteslang
 ```
 
 `slangc` compiler installed and available in your system's PATH.*
@@ -22,7 +22,7 @@ Add the plugin to your `vite.config.ts`:
 
 ```typescript
 import { defineConfig } from 'vite';
-import { slangplugin } from 'vite-plugin-slang';
+import { slangplugin } from '@postred/viteslang';
 
 export default defineConfig({
   plugins: [slangplugin()]
