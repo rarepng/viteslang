@@ -113,6 +113,7 @@ export function slangplugin(): Plugin {
         const compilePromises = mutableentryPoints.map(async (entry) => {
           const args: Array<string> =
               [filePath, '-target', target, '-entry', entry.name];
+          if (target === 'glsl') args.push('-profile', 'glsl_300_es');
           if (faulty) args.push('-stage', entry.stage);
           const {stdout} = await pfexec('slangc', args, {encoding: 'utf8'});
 
