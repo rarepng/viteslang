@@ -195,14 +195,59 @@ export function slangplugin(): Plugin {
               ];
               if (faulty) slangArgs.push('-stage', entry.stage);
               await pfexec('slangc', slangArgs);
+              const {stdout: reflectionJson} =
+                  await pfexec(`spirv-cross`, [tmpSpv, '--reflect']);
+              const reflection = JSON.parse(reflectionJson);
 
-              const crossArgs = [tmpSpv, '--version', '300', '--es'];
-              const {stdout: glslCode} =
-                  await pfexec('spirv-cross', crossArgs, {encoding: 'utf8'});
+              const renameArgs: Array<string> = [];
+              if (reflection.inputs) {
+                reflection.inputs.forEach((input: any) => {
+                  if (input.name && !input.name.startsWith('gl_') &&
+                      input.location !== undefined) {
+                    renameArgs.push(
+                        '--rename-interface-variable', 'in',
+                        input.location.toString(), `v_match_${input.location}`);
+                  }
+                });
+              }
+              if (reflection.outputs) {
+                reflection.outputs.forEach((output: any) => {
+                  if (output.name && !output.name.startsWith('gl_') &&
+                      output.location !== undefined) {
+                    renameArgs.push(
+                        '--rename-interface-variable', 'out',
+                        output.location.toString(),
+                        `v_match_${output.location}`);
+                  }
+                });
+              }
+
+              const xArgs: Array<string> = [
+                tmpSpv, 
+                "--version", "330", 
+                "--extension", "GL_ARB_shader_draw_parameters",
+                "--no-420pack-extension",
+                ...renameArgs
+              ];
+
+              let {stdout: glslCode} = await pfexec("spirv-cross", xArgs, {encoding: 'utf8'});
+
+              // X_X 🔫
+              glslCode = glslCode.replace(/#version.*/, '#version 300 es\nprecision highp float;');
+              glslCode = glslCode.replace(/#extension\s+GL_ARB_shader_draw_parameters.*?\n/g, '');
+              glslCode = glslCode.replace(/\bgl_BaseVertexARB\b/g, '0')
+                                 .replace(/\bgl_BaseInstanceARB\b/g, '0')
+                                 .replace(/\bgl_BaseVertex\b/g, '0')
+                                 .replace(/\bgl_BaseInstance\b/g, '0')
+                                 .replace(/\bgl_VertexIndex\b/g, 'gl_VertexID')
+                                 .replace(/\bgl_InstanceIndex\b/g, 'gl_InstanceID');
+              glslCode = glslCode.replace(/binding\s*=\s*\d+\s*,\s*/g, '')
+                                 .replace(/,\s*binding\s*=\s*\d+/g, '')
+                                 .replace(/layout\s*\(\s*binding\s*=\s*\d+\s*\)\s*/g, '');
 
               return {entry: entry.name, stage: entry.stage, code: glslCode};
             } finally {
-              await fs.rm(tmpSpv, {force: true}).catch(() => {});
+              await Promise.all([fs.rm(tmpSpv, {force: true}).catch(() => {})]);
             }
           }
         });
