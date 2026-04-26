@@ -1,5 +1,7 @@
 import {execFile} from 'node:child_process';
 import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import {promisify} from 'node:util';
 import type {Plugin} from 'vite';
 
@@ -33,7 +35,7 @@ export function slangplugin(): Plugin {
           fallback(
               'glsl',
               () => console.warn(
-                  '[vite-plugin-slang] target was not provided defaulting to glsl\nto provide target use ?target=\navailable targets are wgsl and glsl'));
+                  '[viteslang] target was not provided defaulting to glsl\nto provide target use ?target=\navailable targets are wgsl and glsl'));
 
       try {
         const raw = await fs.readFile(filePath, 'utf-8');
@@ -56,7 +58,7 @@ export function slangplugin(): Plugin {
                 'fragment',
                 () => {
                   console.error( // maybe throw the error instead?
-                    `\n [vite-plugin-slang] No entry points found in: ${filePath}\n` +
+                    `\n [viteslang] No entry points found in: ${filePath}\n` +
                     `You must explicitly tag your shader functions using the Slang attribute system.\n` +
                     `like:\n` +
                     `  [shader("vertex")]\n` +
@@ -81,9 +83,8 @@ export function slangplugin(): Plugin {
               entries.filter(requested => !found.includes(requested));
 
           if (missing.length > 0) {
-            throw new Error(
-                `[vite-plugin-slang] Requested entries not found in ${
-                    filePath}: ${missing.join(', ')}`);
+            throw new Error(`[viteslang] Requested entries not found in ${
+                filePath}: ${missing.join(', ')}`);
           }
         }
 
@@ -92,7 +93,7 @@ export function slangplugin(): Plugin {
             query ? `*/${fileName}?${query}` : `*/${fileName}`;
 
         const dtsPath = `${filePath}.d.ts`;
-        let dtsContent = `// auto generated types file for vite-plugin-slang\n`;
+        let dtsContent = `// auto generated types file for viteslang\n`;
         dtsContent += `declare module "${exactImportString}" {\n`;
         mutableentryPoints.forEach(({name}) => {
           dtsContent += `export const ${
@@ -111,33 +112,99 @@ export function slangplugin(): Plugin {
         }
 
         const compilePromises = mutableentryPoints.map(async (entry) => {
-          const args: Array<string> =
-              [filePath, '-target', target, '-entry', entry.name];
-          if (target === 'glsl') args.push('-profile', 'glsl_300_es');
-          if (faulty) args.push('-stage', entry.stage);
-          const {stdout} = await pfexec('slangc', args, {encoding: 'utf8'});
+          if (target === 'wgsl') {
+            const args: Array<string> =
+                [filePath, '-target', target, '-entry', entry.name];
+            if (faulty) args.push('-stage', entry.stage);
+            const {stdout: wgslCode} =
+                await pfexec('slangc', args, {encoding: 'utf8'});
 
-          // please help
-          const CLEANUP_PATTERNS = [
-            // wgsl
-            'struct\\s+\\w+\\s*\\{[\\s\\S]*?\\};',
-            '@(?:group|binding)[\\s\\S]*?;',
+            // please help
+            const CLEANUP_PATTERNS = [
+              // wgsl
+              'struct\\s+\\w+\\s*\\{[\\s\\S]*?\\};',
+              '@(?:group|binding)[\\s\\S]*?;'
+            ];
 
-            // glsl
-            'layout\\s*\\([\\s\\S]*?binding\\s*=\\s*\\d+[\\s\\S]*?\\)\\s*(?:uniform|buffer)\\s+\\w+\\s*\\{[\\s\\S]*?\\}(?:\\s*\\w+)?\\s*;',
-            'layout\\s*\\([\\s\\S]*?binding\\s*=\\s*\\d+[\\s\\S]*?\\)\\s*uniform\\s+\\w+\\s+\\w+\\s*;'
-          ];
+            const pattern = new RegExp(CLEANUP_PATTERNS.join('|'), 'g');
+            const seen = new Set<string>();
 
-          const pattern = new RegExp(CLEANUP_PATTERNS.join('|'), 'g');
-          const seen = new Set<string>();
+            const code = wgslCode.replace(pattern, (match: string) => {
+              const trim = match.replace(/\s+/g, ' ').trim();
+              if (seen.has(trim)) return '';
+              seen.add(trim);
+              return match;
+            });
+            return {entry: entry.name, stage: entry.stage, code: code};
+          } else {
+            //
+            //
+            //
+            //
+            //    FUTURE REFERENCE
+            //
+            //
+            //
+            //
+            // type compatibility =|{
+            //   kind: 'vertex_id';
+            //   stage: 'vertex';
+            //   severity: 'lossy'
+            // }
+            // |{
+            //   kind: 'instance_id';
+            //   stage: 'vertex';
+            //   severity: 'lossy'
+            // }
+            // |{
+            //   kind: 'draw_index';
+            //   stage: 'vertex';
+            //   severity: 'unsupported'
+            // }
+            // |{
+            //   kind: 'subgroup_ops';
+            //   stage: string;
+            //   severity: 'unsupported'
+            // }
+            // |{
+            //   kind: 'tessellation';
+            //   stage: string;
+            //   severity: 'unsupported'
+            // }
+            // |{
+            //   kind: 'geometry';
+            //   stage: string;
+            //   severity: 'unsupported'
+            // }
+            // |{
+            //   kind: 'raytracing';
+            //   stage: string;
+            //   severity: 'unsupported'
+            // }
+            // |{
+            //   kind: 'storage_buffer_rw';
+            //   stage: string;
+            //   severity: 'maybe'
+            // };
+            const tmpSpv =
+                path.join(os.tmpdir(), `tmp_${Date.now()}_${entry.name}.spv`);
+            try {
+              const slangArgs = [
+                filePath, '-target', 'spirv', '-profile', 'spirv_1_0', '-entry',
+                entry.name, '-o', tmpSpv
+              ];
+              if (faulty) slangArgs.push('-stage', entry.stage);
+              await pfexec('slangc', slangArgs);
 
-          const code = stdout.replace(pattern, (match: string) => {
-            const trim = match.replace(/\s+/g, ' ').trim();
-            if (seen.has(trim)) return '';
-            seen.add(trim);
-            return match;
-          });
-          return {entry: entry.name, stage: entry.stage, code: code};
+              const crossArgs = [tmpSpv, '--version', '300', '--es'];
+              const {stdout: glslCode} =
+                  await pfexec('spirv-cross', crossArgs, {encoding: 'utf8'});
+
+              return {entry: entry.name, stage: entry.stage, code: glslCode};
+            } finally {
+              await fs.rm(tmpSpv, {force: true}).catch(() => {});
+            }
+          }
         });
 
         const shaders = await Promise.all(compilePromises);
@@ -145,7 +212,7 @@ export function slangplugin(): Plugin {
         let exits = ``;
         shaders.forEach(({entry, stage, code}) => {
           exits += `export const ${entry} = {
-    name: "${entry}"
+    name: "${entry}",
     code: ${JSON.stringify(code.trim())},
     target: "${target}",
     stage: "${stage}"
@@ -158,9 +225,9 @@ export function slangplugin(): Plugin {
         // gotta do this properly and parse then separate different slang errors
         // x_x
       } catch (error: any) {
-        console.error(`[vite-plugin-slang] File: ${filePath}`);
+        console.error(`[viteslang] File: ${filePath}`);
         console.error(
-            `[vite-plugin-slang] ${error.stderr?.toString() || error.message}`);
+            `[viteslang] ${error.stderr?.toString() || error.message}`);
         throw error;
       }
     }
